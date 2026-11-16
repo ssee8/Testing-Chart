@@ -18,4 +18,4 @@ docker compose up -d
 
 Open `http://<server-address>:8088`. The host port `8088` maps to the app's container port `8080`; this avoids OpenMediaVault's port `80`.
 
-Submitted files persist in the Compose `submissions` volume. Videos are intentionally excluded from Git and the image; copy them into `public/videos/` on the server. That directory is mounted read-only into the container.
+Submitted files persist in the Compose `submissions` volume. Videos in `public/videos/` are tracked in Git and become available on the server after `git pull`. Compose mounts that directory read-only into the container; videos are excluded from the image itself.
