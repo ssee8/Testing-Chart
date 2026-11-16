@@ -11,7 +11,7 @@ docker compose pull
 docker compose up -d
 ```
 
-Open [http://localhost:8080](http://localhost:8080). To stop it:
+Open [http://localhost:8088](http://localhost:8088). To stop it:
 
 ```sh
 docker compose down
