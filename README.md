@@ -21,17 +21,15 @@ The portal is a static site served by Nginx; no application dependencies or envi
 
 ## Deploy with GitHub Actions
 
-The workflow builds and publishes `ghcr.io/ssee8/testing-chart` when changes are pushed to `main`, then deploys it to the server. It can also be started manually from the Actions tab.
+The workflow builds and publishes `ghcr.io/ssee8/testing-chart:latest` when changes are pushed to `main`. It can also be started manually from the Actions tab. It does not connect to a server; any machine with Docker Compose can pull and run the public image.
 
-Configure these repository settings:
-
-- **Variables:** `SERVER_HOST`, `SERVER_USER`, and `SERVER_DEPLOY_PATH` (an absolute server directory without spaces). Optionally set `SERVER_SSH_PORT` (defaults to `22`).
-- **Secrets:** `SERVER_SSH_KEY` (the private key for SSH access) and `SERVER_KNOWN_HOSTS` (the server's pinned known-hosts entry).
-- If the GHCR package is private, also set `GHCR_USERNAME` and `GHCR_PULL_TOKEN`. The token needs `read:packages` access. For a public package, these two secrets are not needed.
-
-The server must have Docker with the Compose plugin installed, and the SSH user must be able to run Docker. Once deployed, the workflow copies `docker-compose.yml` into `SERVER_DEPLOY_PATH` and runs:
+Make sure the GHCR package `ghcr.io/ssee8/testing-chart` is public. On a server with Docker and the Compose plugin installed, clone this public repository and start the service:
 
 ```sh
+git clone https://github.com/ssee8/Testing-Chart.git
+cd Testing-Chart
 docker compose pull
 docker compose up -d
 ```
+
+On later updates, run `git pull` in the repository directory, then repeat the Compose commands. No server SSH secrets are required.
