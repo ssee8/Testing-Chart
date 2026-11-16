@@ -1,0 +1,57 @@
+name: Deploy to server
+
+on:
+  workflow_run:
+    workflows:
+      - Publish ELS Erode app image
+    types:
+      - completed
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: ${{ (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main') }}
+    runs-on: ubuntu-latest
+    env:
+      SERVER_HOST: ${{ vars.SERVER_HOST }}
+      SERVER_USER: ${{ vars.SERVER_USER }}
+      SERVER_DEPLOY_PATH: ${{ vars.SERVER_DEPLOY_PATH }}
+      SERVER_SSH_PORT: ${{ vars.SERVER_SSH_PORT || '22' }}
+      SSH_PRIVATE_KEY: ${{ secrets.SERVER_SSH_KEY }}
+      SSH_KNOWN_HOSTS: ${{ secrets.SERVER_KNOWN_HOSTS }}
+    steps:
+      - name: Validate deployment settings
+        run: |
+          test -n "$SERVER_HOST" || { echo "Set the SERVER_HOST repository variable."; exit 1; }
+          test -n "$SERVER_USER" || { echo "Set the SERVER_USER repository variable."; exit 1; }
+          test -n "$SERVER_DEPLOY_PATH" || { echo "Set the SERVER_DEPLOY_PATH repository variable."; exit 1; }
+          test -n "$SSH_PRIVATE_KEY" || { echo "Set the SERVER_SSH_KEY repository secret."; exit 1; }
+          test -n "$SSH_KNOWN_HOSTS" || { echo "Set the SERVER_KNOWN_HOSTS repository secret."; exit 1; }
+          [[ "$SERVER_USER" =~ ^[A-Za-z0-9._-]+$ ]] || { echo "SERVER_USER contains unsupported characters."; exit 1; }
+          [[ "$SERVER_SSH_PORT" =~ ^[0-9]+$ ]] || { echo "SERVER_SSH_PORT must be numeric."; exit 1; }
+          [[ "$SERVER_DEPLOY_PATH" == /* && "$SERVER_DEPLOY_PATH" != *"'"* ]] || {
+            echo "SERVER_DEPLOY_PATH must be an absolute path without single quotes."
+            exit 1
+          }
+
+      - name: Configure SSH
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Pull and restart app on server
+        run: |
+          remote_command="cd '$SERVER_DEPLOY_PATH' && git pull --ff-only origin main && docker compose pull && docker compose up -d"
+          ssh -p "$SERVER_SSH_PORT" \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            "$SERVER_USER@$SERVER_HOST" \
+            "$remote_command"
