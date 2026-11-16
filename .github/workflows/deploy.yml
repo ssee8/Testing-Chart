@@ -1,4 +1,4 @@
-name: Publish container image
+name: Publish ELS Erode app image
 
 on:
   push:

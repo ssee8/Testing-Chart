@@ -1,35 +1,21 @@
-# Testing Chart Portal
+# ELS Erode Server
 
-A lightweight, responsive placeholder portal for the testing chart. The chart area is ready to be updated once the chart and its data are available.
+This app serves the inspection chart and stores submitted JSON and PDF reports.
 
-## Run with Docker Compose
+## Run locally with Python
 
-From this directory, pull the latest published image and start the portal:
+Run `start.bat` on Windows or `sh start.sh` on Linux/macOS. The app listens on port `8080`; open [http://localhost:8080](http://localhost:8080).
+
+## Deploy with Docker Compose
+
+The GitHub Actions workflow publishes the app image to GHCR on each push to `main`. On the server, clone or update this repository, then run:
 
 ```sh
+git pull
 docker compose pull
 docker compose up -d
 ```
 
-Open [http://localhost:8088](http://localhost:8088). To stop it:
+Open `http://<server-address>:8088`. The host port `8088` maps to the app's container port `8080`; this avoids OpenMediaVault's port `80`.
 
-```sh
-docker compose down
-```
-
-The portal is a static site served by Nginx; no application dependencies or environment variables are required.
-
-## Deploy with GitHub Actions
-
-The workflow builds and publishes `ghcr.io/ssee8/testing-chart:latest` when changes are pushed to `main`. It can also be started manually from the Actions tab. It does not connect to a server; any machine with Docker Compose can pull and run the public image.
-
-Make sure the GHCR package `ghcr.io/ssee8/testing-chart` is public. On a server with Docker and the Compose plugin installed, clone this public repository and start the service:
-
-```sh
-git clone https://github.com/ssee8/Testing-Chart.git
-cd Testing-Chart
-docker compose pull
-docker compose up -d
-```
-
-On later updates, run `git pull` in the repository directory, then repeat the Compose commands. No server SSH secrets are required.
+Submitted files persist in the Compose `submissions` volume. Videos are intentionally excluded from Git and the image; copy them into `public/videos/` on the server. That directory is mounted read-only into the container.

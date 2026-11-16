@@ -1,0 +1,2104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Schedule Inspection Chart - E5B2 3-Phase Locos</title>
+
+  <!-- Client-side PDF Generation Engines -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
+  <style>
+    :root {
+      --primary: #1a365d;
+      --primary-light: #2b6cb0;
+      --accent: #d69e2e;
+      --bg: #f7fafc;
+      --card-bg: #ffffff;
+      --border: #cbd5e0;
+      --text: #2d3748;
+      --success: #2f855a;
+      --danger: #c53030;
+      --touch-target: 46px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+      font-size: 15px;
+    }
+
+    /* Fixed Top App Bar */
+    header {
+      background-color: var(--primary);
+      color: white;
+      padding: 8px 14px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      z-index: 20;
+    }
+
+    .shed-title h1 {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    .shed-title p {
+      font-size: 11px;
+      color: #bee3f8;
+    }
+
+    .meta-inputs {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 4px 10px;
+      border-radius: 8px;
+    }
+
+    .meta-field {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+    }
+
+    .meta-field input[type="text"],
+    .meta-field input[type="date"] {
+      height: 32px;
+      padding: 3px 6px;
+      border-radius: 4px;
+      border: 1px solid #cbd5e0;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .schedule-chips {
+      display: flex;
+      gap: 3px;
+      background: white;
+      padding: 2px;
+      border-radius: 5px;
+    }
+
+    .schedule-chips label {
+      padding: 3px 8px;
+      font-weight: 700;
+      font-size: 12px;
+      color: var(--primary);
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .schedule-chips input[type="radio"] {
+      display: none;
+    }
+
+    .schedule-chips input[type="radio"]:checked + span {
+      background: var(--primary);
+      color: white;
+      border-radius: 3px;
+      padding: 3px 7px;
+    }
+
+    .doc-meta {
+      font-size: 10px;
+      text-align: right;
+      color: #cbd5e0;
+      line-height: 1.25;
+    }
+
+    /* Tab Navigation */
+    nav.tab-bar {
+      display: flex;
+      background: #edf2f7;
+      border-bottom: 2px solid var(--border);
+      overflow-x: auto;
+      scrollbar-width: none;
+      z-index: 10;
+    }
+
+    nav.tab-bar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .tab-btn {
+      flex: 1;
+      min-width: 140px;
+      min-height: var(--touch-target);
+      background: none;
+      border: none;
+      font-size: 13px;
+      font-weight: 600;
+      color: #4a5568;
+      border-bottom: 3px solid transparent;
+      padding: 8px 10px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .tab-btn.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+      background: white;
+    }
+
+    /* Content Area */
+    main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+      position: relative;
+    }
+
+    .tab-content {
+      display: none;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      padding: 14px;
+      margin-bottom: 70px;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 8px;
+      margin-bottom: 12px;
+    }
+
+    .section-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--primary);
+      text-transform: uppercase;
+    }
+
+    .quick-fill-btn {
+      background: #ebf8ff;
+      color: var(--primary-light);
+      border: 1px solid #bee3f8;
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      min-height: 38px;
+    }
+
+    /* Checklist Table Layout */
+    table.check-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+
+    table.check-table th, table.check-table td {
+      border: 1px solid var(--border);
+      padding: 8px 10px;
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    table.check-table th {
+      background-color: #f7fafc;
+      font-size: 12px;
+      font-weight: 700;
+      color: #4a5568;
+      text-transform: uppercase;
+    }
+
+    .param-flex {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .param-text {
+      flex: 1;
+      line-height: 1.35;
+    }
+
+    /* Video Help Button */
+    .btn-help-vid {
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: #fff5f5;
+      border: 1.5px solid #feb2b2;
+      color: #c53030;
+      padding: 5px 9px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.15s ease-in-out;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+
+    .btn-help-vid:active {
+      transform: scale(0.94);
+      background: #fed7d7;
+    }
+
+    .btn-help-vid svg {
+      width: 14px;
+      height: 14px;
+      fill: #c53030;
+    }
+
+    select.action-select {
+      width: 100%;
+      min-height: 42px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1.5px solid #cbd5e0;
+      font-size: 14px;
+      font-weight: 600;
+      color: #2d3748;
+      background-color: #fff;
+      cursor: pointer;
+      outline: none;
+    }
+
+    select.action-select.defect {
+      border-color: var(--danger);
+      background-color: #fff5f5;
+      color: var(--danger);
+    }
+
+    .ref-text {
+      font-size: 11px;
+      color: #c53030;
+      display: block;
+      margin-top: 3px;
+    }
+
+    .green-text {
+      color: #2f855a;
+      font-weight: 600;
+    }
+
+    /* 26-Cell Battery Voltage Matrix & Drag-Fill */
+    .battery-helper-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #ebf8ff;
+      border: 1px solid #bee3f8;
+      border-radius: 6px;
+      padding: 6px 12px;
+      margin-bottom: 10px;
+      font-size: 12px;
+      color: #2b6cb0;
+    }
+
+    .helper-btns {
+      display: flex;
+      gap: 8px;
+    }
+
+    .mini-btn {
+      background: white;
+      border: 1px solid #90cdf4;
+      color: #2b6cb0;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .battery-matrix-container {
+      overflow-x: auto;
+      max-height: calc(100vh - 290px);
+      position: relative;
+      user-select: none;
+    }
+
+    table.matrix-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    table.matrix-table th, table.matrix-table td {
+      border: 1px solid var(--border);
+      padding: 4px 6px;
+      text-align: center;
+      position: relative;
+    }
+
+    table.matrix-table th {
+      background: #edf2f7;
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+
+    table.matrix-table input[type="number"] {
+      width: 62px;
+      height: 36px;
+      text-align: center;
+      border: 1.5px solid #cbd5e0;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #2d3748;
+      background: #fff;
+    }
+
+    table.matrix-table input.drag-target {
+      background-color: #bee3f8 !important;
+      border: 2px dashed #2b6cb0 !important;
+      color: #1a365d !important;
+    }
+
+    #dragHandle {
+      position: absolute;
+      width: 24px;
+      height: 24px;
+      background: #2b6cb0;
+      border: 2px solid white;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+      border-radius: 50%;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      cursor: grab;
+      z-index: 15;
+      touch-action: none;
+      transform: translate(25%, 25%);
+    }
+
+    #dragHandle:active {
+      cursor: grabbing;
+      background: #1a365d;
+      transform: translate(25%, 25%) scale(1.15);
+    }
+
+    #dragTooltip {
+      position: fixed;
+      background: #1a202c;
+      color: white;
+      padding: 5px 10px;
+      border-radius: 5px;
+      font-size: 11px;
+      font-weight: 700;
+      pointer-events: none;
+      z-index: 100;
+      display: none;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
+
+    .auto-total {
+      background-color: #f7fafc;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .footer-summary {
+      display: flex;
+      justify-content: space-around;
+      background: #ebf8ff;
+      border: 1px solid #bee3f8;
+      border-radius: 6px;
+      padding: 10px;
+      margin-top: 10px;
+      font-weight: 700;
+      font-size: 15px;
+    }
+
+    /* Sign-off Boxes */
+    .sign-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .sign-box {
+      border: 1px solid var(--border);
+      padding: 10px 14px;
+      border-radius: 6px;
+      background: #f7fafc;
+    }
+
+    .sign-box.highlight {
+      background: #ebf8ff;
+      border-color: #90cdf4;
+    }
+
+    .sign-box label {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 4px;
+    }
+
+    .sign-box input {
+      width: 100%;
+      height: 36px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 13px;
+    }
+
+    /* Fixed Bottom Action Floating Bar */
+    footer.bottom-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 54px;
+      background: white;
+      border-top: 1.5px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 14px;
+      box-shadow: 0 -3px 8px rgba(0,0,0,0.08);
+      z-index: 30;
+    }
+
+    .bottom-left-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn-fs {
+      background: #2b6cb0;
+      color: white;
+      border: 1.5px solid #1a365d;
+      font-weight: 700;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+      transition: all 0.2s ease;
+    }
+
+    .btn-fs:active {
+      transform: scale(0.96);
+    }
+
+    .btn-fs.active {
+      background: var(--accent);
+      color: #1a202c;
+      border-color: #d69e2e;
+    }
+
+    .status-badge {
+      font-size: 12px;
+      color: var(--success);
+      font-weight: 600;
+    }
+
+    .bar-btns {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn {
+      height: 40px;
+      padding: 0 12px;
+      border-radius: 6px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      white-space: nowrap;
+    }
+
+    .btn-upload { background: #2f855a; color: white; }
+    .btn-pdf { background: #c53030; color: white; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-secondary { background: #e2e8f0; color: #4a5568; }
+
+    /* Overlay Mini Video Player */
+    .video-modal-backdrop {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .video-modal-backdrop.show {
+      display: flex;
+    }
+
+    .video-card {
+      background: #1a202c;
+      color: white;
+      width: 100%;
+      max-width: 620px;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+      border: 1px solid #4a5568;
+      display: flex;
+      flex-direction: column;
+      animation: modalSlide 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes modalSlide {
+      from { transform: translateY(20px) scale(0.97); opacity: 0; }
+      to { transform: translateY(0) scale(1); opacity: 1; }
+    }
+
+    .video-card-header {
+      background: #2d3748;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #4a5568;
+    }
+
+    .video-card-title {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #edf2f7;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      padding-right: 10px;
+    }
+
+    .video-close-btn {
+      background: #4a5568;
+      color: white;
+      border: none;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .video-close-btn:active {
+      background: #e53e3e;
+    }
+
+    .video-body {
+      background: #000;
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .video-body video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .video-footer-info {
+      padding: 8px 14px;
+      font-size: 11px;
+      color: #a0aec0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #1a202c;
+    }
+
+    @media print {
+      body { overflow: visible; height: auto; }
+      header, nav.tab-bar, footer.bottom-bar, .quick-fill-btn, .battery-helper-bar, #dragHandle, .btn-help-vid, .video-modal-backdrop { display: none !important; }
+      .tab-content { display: block !important; page-break-after: always; box-shadow: none; padding: 0; }
+      select { border: none !important; appearance: none; -webkit-appearance: none; background: transparent !important; font-weight: bold; }
+      input { border: none !important; background: transparent !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top App Bar -->
+  <header>
+    <div class="shed-title">
+      <h1>Southern Railway • ELS / Erode</h1>
+      <p>Schedule Inspection Chart: 3-Phase Locos (Section-E5B2)</p>
+    </div>
+
+    <div class="meta-inputs">
+      <div class="meta-field">
+        <label>Loco:</label>
+        <input type="text" id="locoNo" placeholder="30201" style="width: 75px;" />
+      </div>
+      <div class="meta-field">
+        <label>Date:</label>
+        <input type="date" id="inspDate" />
+      </div>
+      <div class="schedule-chips">
+        <label><input type="radio" name="schType" value="IA" checked /><span>IA</span></label>
+        <label><input type="radio" name="schType" value="IB" /><span>IB</span></label>
+        <label><input type="radio" name="schType" value="IC" /><span>IC</span></label>
+      </div>
+    </div>
+
+    <div class="doc-meta">
+      <div>Doc: <strong>F/ E5B2 3Phase/01</strong></div>
+      <div>Rev: 0 • Date: 28.04.2026</div>
+    </div>
+  </header>
+
+  <!-- Section Tabs -->
+  <nav class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab(0)">
+      <span>1a. Batteries</span>
+      <small>26-Cell Matrix</small>
+    </button>
+    <button class="tab-btn" onclick="switchTab(1)">
+      <span>1b, 2 & 3. Battery Box</span>
+      <small>Checks & MCB 112</small>
+    </button>
+    <button class="tab-btn" onclick="switchTab(2)">
+      <span>4-7. Lighting & Cab</span>
+      <small>Head, Marker, Signals</small>
+    </button>
+    <button class="tab-btn" onclick="switchTab(3)">
+      <span>8, 11 & 12. Cables & LTBA</span>
+      <small>TMDDS, Trenches</small>
+    </button>
+    <button class="tab-btn" onclick="switchTab(4)">
+      <span>9 & 10. Couplers</span>
+      <small>IV & UIC Couplers</small>
+    </button>
+    <button class="tab-btn" onclick="switchTab(5)">
+      <span>Sign-Off & Approvals</span>
+      <small>ADEE/DEE & Sr. DEE</small>
+    </button>
+  </nav>
+
+  <!-- Main Scrollable Work Area -->
+  <main>
+
+    <!-- TAB 0: 1a. BATTERY MATRIX -->
+    <div class="tab-content active" id="tab-0">
+      <div class="section-header">
+        <div class="section-title">1.a Battery Voltage and Specific Gravity (26 Nos)</div>
+        <div style="display: flex; gap: 8px;">
+          <input type="text" id="batMake" placeholder="MAKE" style="height: 34px; padding: 0 8px; border-radius: 4px; border: 1px solid #cbd5e0; font-size: 13px;" />
+          <input type="text" id="lugDate" placeholder="LUG DATE" style="height: 34px; padding: 0 8px; border-radius: 4px; border: 1px solid #cbd5e0; font-size: 13px;" />
+        </div>
+      </div>
+
+      <div class="battery-helper-bar">
+        <span>💡 <strong>Touch & Drag:</strong> Tap any cell & drag the <strong>blue handle (⤓)</strong> down or across to auto-fill cells.</span>
+        <div class="helper-btns">
+          <button class="mini-btn" onclick="quickFillColumn()">⬇ Fill Down Column</button>
+          <button class="mini-btn" onclick="quickFillRow()">➡ Fill Across 3 Cells</button>
+        </div>
+      </div>
+
+      <div class="battery-matrix-container" id="matrixContainer">
+        <div id="dragHandle" title="Drag down or across to duplicate value">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+            <path d="M12 4v16m0 0l-6-6m6 6l6-6" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+
+        <table class="matrix-table" id="batteryTable">
+          <thead>
+            <tr>
+              <th rowspan="2">BA NO.</th>
+              <th colspan="3">WITHOUT LOAD (V)</th>
+              <th rowspan="2">TOTAL (NL)</th>
+              <th colspan="3">WITH LOAD (V)</th>
+              <th rowspan="2">TOTAL (WL)</th>
+              <th colspan="3">SP. GRAVITY (1.190 - 1.210)</th>
+            </tr>
+            <tr>
+              <th>C1</th><th>C2</th><th>C3</th>
+              <th>C1</th><th>C2</th><th>C3</th>
+              <th>C1</th><th>C2</th><th>C3</th>
+            </tr>
+          </thead>
+          <tbody id="batteryRows"></tbody>
+        </table>
+      </div>
+
+      <div class="footer-summary">
+        <div>Total Voltage No Load: <span id="lblTotalNL" style="color: var(--primary);">0.00</span> V</div>
+        <div>Total Voltage On Load: <span id="lblTotalWL" style="color: var(--primary);">0.00</span> V</div>
+      </div>
+    </div>
+
+    <div id="dragTooltip"></div>
+
+    <!-- TAB 1: 1b, 2 & 3. BATTERIES, BATTERY BOX, MCB -->
+    <div class="tab-content" id="tab-1">
+      <div class="section-header">
+        <div class="section-title">1.b Batteries</div>
+        <button class="quick-fill-btn" onclick="resetSection('sec-1b')">Set All to Standard</button>
+      </div>
+      <table class="check-table" id="sec-1b">
+        <thead><tr><th style="width: 45px;">Sl</th><th>Parameter to be verified</th><th style="width: 250px;">Action Taken / Actual Value</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td><div class="param-flex"><span class="param-text">Check for any leakage from battery.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('bat_leakage.mp4', '1.b.1 Battery Leakage Inspection')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="No leakage" selected>No leakage</option><option value="Leakage noted & attended" class="defect">Leakage noted & attended</option><option value="Cleaned & Checked">Cleaned & Checked</option></select></td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td><div class="param-flex"><span class="param-text">Check electrolyte level and top up with distilled water, if necessary.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('bat_water_topup.mp4', '1.b.2 Electrolyte & Distilled Water Top-Up')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked / Level OK" selected>Checked / Level OK</option><option value="Topped up with Distilled Water">Topped up with Distilled Water</option><option value="Low level noted & attended" class="defect">Low level noted & attended</option></select></td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td><div class="param-flex"><span class="param-text">Remove any dirt deposits or electrolyte spillage.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('bat_cleaning.mp4', '1.b.3 Dirt & Spillage Cleaning')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Cleaned" selected>Cleaned</option><option value="Spillage cleaned">Spillage cleaned</option></select></td>
+          </tr>
+          <tr>
+            <td>4</td>
+            <td><div class="param-flex"><span class="param-text">Check Individual cell voltage (1.2 - 1.4 V).</span><button type="button" class="btn-help-vid" onclick="openVideoModal('bat_voltage_meas.mp4', '1.b.4 Cell Voltage Measurement Procedure')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="All Cells 1.2 - 1.4 V (OK)" selected>All Cells 1.2 - 1.4 V (OK)</option><option value="Recorded in Tab 1">Recorded in Tab 1</option><option value="Low Cell Voltage Noted" class="defect">Low Cell Voltage Noted</option></select></td>
+          </tr>
+          <tr>
+            <td>5</td>
+            <td><div class="param-flex"><span class="param-text">Check specific gravity of electrolyte (1.190 - 1.210).</span><button type="button" class="btn-help-vid" onclick="openVideoModal('bat_hydrometer.mp4', '1.b.5 Specific Gravity Hydrometer Test')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Specific Gravity 1.190-1.210 (OK)" selected>Specific Gravity 1.190-1.210 (OK)</option><option value="Recorded in Tab 1">Recorded in Tab 1</option><option value="Low Sp. Gravity Noted" class="defect">Low Sp. Gravity Noted</option></select></td>
+          </tr>
+          <tr>
+            <td>6</td>
+            <td><div class="param-flex"><span class="param-text">Clean & check tightness of electrical connections and apply white petroleum jelly.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('bat_jelly_tight.mp4', '1.b.6 Connection Tightness & Petroleum Jelly')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Done" selected>Done</option><option value="Tightened & Jelly Applied">Tightened & Jelly Applied</option></select></td>
+          </tr>
+          <tr>
+            <td>7</td>
+            <td><div class="param-flex"><span class="param-text">Check condition of vent plugs and secure properly.<span class="ref-text">Ensure flame arrestors are invariably provided in all vent caps (RDSO/PE/SMI/TL/0046-2012).</span></span><button type="button" class="btn-help-vid" onclick="openVideoModal('bat_vent_caps.mp4', '1.b.7 Vent Plugs & Flame Arrestor Verification')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked and ensured" selected>Checked and ensured</option><option value="Vent caps secured">Vent caps secured</option><option value="Defective caps replaced" class="defect">Defective caps replaced</option></select></td>
+          </tr>
+          <tr>
+            <td>8</td>
+            <td><div class="param-flex"><span class="param-text">Check the healthiness and tightness of control wires.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('bat_control_wires.mp4', '1.b.8 Control Wires Verification')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked / Intact" selected>Checked / Intact</option><option value="Tightened">Tightened</option></select></td>
+          </tr>
+          <tr>
+            <td>9</td>
+            <td><div class="param-flex"><span class="param-text">Boost charging to be done with 150 V; 4–5 hours; max 40 A (IC, Ref: RDSO PE SMI 0046)</span><button type="button" class="btn-help-vid" onclick="openVideoModal('bat_boost_charge.mp4', '1.b.9 Boost Charging Protocol')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Done" selected>Done</option><option value="Not Applicable (IA/IB)">Not Applicable (IA/IB)</option></select></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- 2. Battery Box -->
+      <div class="section-header">
+        <div class="section-title">2. Battery Box</div>
+        <button class="quick-fill-btn" onclick="resetSection('sec-2')">Set All to Standard</button>
+      </div>
+      <table class="check-table" id="sec-2">
+        <thead><tr><th style="width: 45px;">Sl</th><th>Parameter to be verified</th><th style="width: 250px;">Action Taken / Actual Value</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td><div class="param-flex"><span class="param-text">Visually inspect battery box for external hits & damages. Repair, If required.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('bbox_hit_damage.mp4', '2.1 Battery Box Visual Damage Check')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked / No damage" selected>Checked / No damage</option><option value="Repaired">Repaired</option></select></td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td><div class="param-flex"><span class="param-text">Visually check the hanging supports of battery box.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('bbox_hanging_supports.mp4', '2.2 Hanging Supports Inspection')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked / Intact" selected>Checked / Intact</option><option value="Tightened">Tightened</option></select></td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td><div class="param-flex"><span class="param-text">Ensure DPT to check for any cracks on the hanging supports.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('bbox_dpt_test.mp4', '2.3 DPT Crack Inspection Procedure')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Done / No cracks found" selected>Done / No cracks found</option><option value="Crack observed & attended" class="defect">Crack observed & attended</option></select></td>
+          </tr>
+          <tr>
+            <td>4</td>
+            <td><div class="param-flex"><span class="param-text">Ensure proper provisioning of inter battery packing spacers.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('bbox_spacers.mp4', '2.4 Inter Battery Packing Spacers')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Ensured / Intact" selected>Ensured / Intact</option><option value="Spacers provided / replaced">Spacers provided / replaced</option></select></td>
+          </tr>
+          <tr>
+            <td>5</td>
+            <td><div class="param-flex"><span class="param-text">Clean the battery, battery box and tray.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('bbox_cleaning.mp4', '2.5 Battery Tray Cleaning')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Cleaned" selected>Cleaned</option><option value="Thoroughly cleaned & dried">Thoroughly cleaned & dried</option></select></td>
+          </tr>
+          <tr>
+            <td>6</td>
+            <td><div class="param-flex"><span class="param-text">Check tightness of fixing bolts between battery box and support.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('bbox_fixing_bolts.mp4', '2.6 Fixing Bolts Tightening')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Tight / OK" selected>Tight / OK</option><option value="Torqued / Tightened">Torqued / Tightened</option></select></td>
+          </tr>
+          <tr>
+            <td>7</td>
+            <td><div class="param-flex"><span class="param-text">Check door seal, door lock. Test locking handles. Repair, If required.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('bbox_door_seal.mp4', '2.7 Door Seal & Locking Handle Inspection')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked / Working Normal" selected>Checked / Working Normal</option><option value="Door seal replaced">Door seal replaced</option></select></td>
+          </tr>
+          <tr>
+            <td>8</td>
+            <td><div class="param-flex"><span class="param-text">Apply small amount of suitable lubricant to locking handle pivots.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('bbox_handle_lube.mp4', '2.8 Locking Pivot Lubrication')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Done" selected>Done</option><option value="Lubricated">Lubricated</option></select></td>
+          </tr>
+          <tr>
+            <td>9</td>
+            <td><div class="param-flex"><span class="param-text">Apply grease to sliding mechanism and check freeness of operation.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('bbox_sliding_mechanism.mp4', '2.9 Sliding Mechanism Greasing')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Done / Free movement" selected>Done / Free movement</option><option value="Greased & Checked">Greased & Checked</option></select></td>
+          </tr>
+          <tr>
+            <td>10</td>
+            <td><div class="param-flex"><span class="param-text">Check cable layout and its rubbing inside battery box.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('bbox_cable_rubbing.mp4', '2.10 Cable Rubbing Check')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked / No rubbing" selected>Checked / No rubbing</option><option value="Rubbing noticed & dressed" class="defect">Rubbing noticed & dressed</option></select></td>
+          </tr>
+          <tr>
+            <td>11</td>
+            <td><div class="param-flex"><span class="param-text">Check cable /ventilation hose fitted on back side of battery box.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('bbox_vent_hose.mp4', '2.11 Ventilation Hose Condition')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked / Intact" selected>Checked / Intact</option><option value="Hose secured / replaced">Hose secured / replaced</option></select></td>
+          </tr>
+          <tr>
+            <td>12</td>
+            <td><div class="param-flex"><span class="param-text">Check breather provided on battery box.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('bbox_breather.mp4', '2.12 Breather Port Cleaning')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked / Clear" selected>Checked / Clear</option><option value="Cleaned & Cleared">Cleaned & Cleared</option></select></td>
+          </tr>
+          <tr>
+            <td>13</td>
+            <td><div class="param-flex"><span class="param-text">Check earthing cables of battery box.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('bbox_earthing.mp4', '2.13 Earthing Cables Inspection')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked / Intact & Tight" selected>Checked / Intact & Tight</option><option value="Tightened">Tightened</option></select></td>
+          </tr>
+          <tr>
+            <td>14</td>
+            <td><div class="param-flex"><span class="param-text">Check male/female battery connection.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('bbox_connectors.mp4', '2.14 Male/Female Connector Inspection')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked / Intact" selected>Checked / Intact</option><option value="Cleaned & Tightened">Cleaned & Tightened</option></select></td>
+          </tr>
+          <tr>
+            <td>15</td>
+            <td><div class="param-flex"><span class="param-text">Check Stiffener tightness on battery connection.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('bbox_stiffener.mp4', '2.15 Connection Stiffener Tightness')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked / Tight" selected>Checked / Tight</option><option value="Tightened">Tightened</option></select></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- 3. Battery Box MCB (112) -->
+      <div class="section-header">
+        <div class="section-title">3. Battery Box MCB (112)</div>
+        <button class="quick-fill-btn" onclick="resetSection('sec-3')">Set All to Standard</button>
+      </div>
+      <table class="check-table" id="sec-3">
+        <thead><tr><th style="width: 45px;">Sl</th><th>Parameter to be verified</th><th style="width: 250px;">Action Taken / Actual Value</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td><div class="param-flex"><span class="param-text">Check tightness of battery box MCB.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('mcb_tightness.mp4', '3.1 MCB 112 Mounting Tightness')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked / Tight" selected>Checked / Tight</option><option value="Tightened">Tightened</option></select></td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td><div class="param-flex"><span class="param-text">Check tightness of battery box MCB connection.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('mcb_connection.mp4', '3.2 MCB Terminal Tightness')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked / Tight" selected>Checked / Tight</option><option value="Tightened">Tightened</option></select></td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td><div class="param-flex"><span class="param-text">Check for any rubbing of MCB cable.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('mcb_cable_rub.mp4', '3.3 MCB Cable Dressing')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked / No rubbing" selected>Checked / No rubbing</option><option value="Cable dressed & secured" class="defect">Cable dressed & secured</option></select></td>
+          </tr>
+          <tr>
+            <td>4</td>
+            <td><div class="param-flex"><span class="param-text">Check earthing cable in MCB box.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('mcb_earthing.mp4', '3.4 MCB Enclosure Earthing')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked / Intact" selected>Checked / Intact</option><option value="Tightened">Tightened</option></select></td>
+          </tr>
+          <tr>
+            <td>5</td>
+            <td><div class="param-flex"><span class="param-text">Check MCB operation and MCB cover fitment.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('mcb_operation.mp4', '3.5 MCB Manual Trip & Cover Test')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked / Normal operation" selected>Checked / Normal operation</option><option value="MCB replaced" class="defect">MCB replaced</option></select></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- TAB 2: LIGHTING & CAB (4, 5, 6, 7) -->
+    <div class="tab-content" id="tab-2">
+      <div class="section-header">
+        <div class="section-title">4. Head Light</div>
+        <button class="quick-fill-btn" onclick="resetSection('sec-4')">Set All to Standard</button>
+      </div>
+      <table class="check-table" id="sec-4">
+        <thead><tr><th style="width: 45px;">Sl</th><th>Parameter to be verified</th><th style="width: 250px;">Action Taken / Actual Value</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td><div class="param-flex"><span class="param-text">Clean the glasses of the HL unit and ensure no crack.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('hl_glass_clean.mp4', '4.1 Headlight Glass Cleaning')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Cleaned & Ensured / No crack" selected>Cleaned & Ensured / No crack</option><option value="Cracked glass replaced" class="defect">Cracked glass replaced</option></select></td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td><div class="param-flex"><span class="param-text">Ensure no water entry through head light joints.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('hl_water_sealing.mp4', '4.2 Headlight Water Ingress Check')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Ensured / No leakage" selected>Ensured / No leakage</option><option value="Gasket / Sealant applied">Gasket / Sealant applied</option></select></td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td><div class="param-flex"><span class="param-text">Check for crack/breakage of aluminium casing of headlight.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('hl_casing.mp4', '4.3 Casing Integrity Inspection')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked / Intact" selected>Checked / Intact</option><option value="Casing repaired / replaced" class="defect">Casing repaired / replaced</option></select></td>
+          </tr>
+          <tr>
+            <td>4</td>
+            <td><div class="param-flex"><span class="param-text">Check fitment and tightness of headlight.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('hl_mounting.mp4', '4.4 Headlight Mounting Tightness')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked / Intact & Tight" selected>Checked / Intact & Tight</option><option value="Mounting tightened">Mounting tightened</option></select></td>
+          </tr>
+          <tr>
+            <td>5</td>
+            <td><div class="param-flex"><span class="param-text">Check the proper operation of head light.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('hl_operation.mp4', '4.5 Headlight Beam & Dimmer Test')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked / Working Normal" selected>Checked / Working Normal</option><option value="Bulb / LED replaced">Bulb / LED replaced</option></select></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- 5. Cab & Spot Light -->
+      <div class="section-header">
+        <div class="section-title">5. Cab, Machine Room and Spotlight</div>
+        <button class="quick-fill-btn" onclick="resetSection('sec-5')">Set All to Standard</button>
+      </div>
+      <table class="check-table" id="sec-5">
+        <thead><tr><th style="width: 45px;">Sl</th><th>Parameter to be verified</th><th style="width: 250px;">Action Taken / Actual Value</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td><div class="param-flex"><span class="param-text">Clean all light fittings and ensure its intactness.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('cab_light_clean.mp4', '5.1 Cab Light Cleaning')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Done / Cleaned & Intact" selected>Done / Cleaned & Intact</option><option value="Fittings attended">Fittings attended</option></select></td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td><div class="param-flex"><span class="param-text">Check spotlight connections and condition of its holder.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('spotlight_check.mp4', '5.2 Spotlight & Holder Check')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked / Intact" selected>Checked / Intact</option><option value="Holder replaced">Holder replaced</option></select></td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td><div class="param-flex"><span class="param-text">Check tube light connection for tightness and cable condition.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('tubelight_conn.mp4', '5.3 Machine Room Tube Light Test')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked / Tight & Good" selected>Checked / Tight & Good</option><option value="Connection tightened">Connection tightened</option></select></td>
+          </tr>
+          <tr>
+            <td>4</td>
+            <td><div class="param-flex"><span class="param-text">Check working of latching switch 327.1 and 327.2</span><button type="button" class="btn-help-vid" onclick="openVideoModal('latch_switch.mp4', '5.4 Latching Switches 327.1/2')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked / Working Normal" selected>Checked / Working Normal</option><option value="Switch replaced" class="defect">Switch replaced</option></select></td>
+          </tr>
+          <tr>
+            <td>5</td>
+            <td><div class="param-flex"><span class="param-text">Check the connection and tightness of terminal bar</span><button type="button" class="btn-help-vid" onclick="openVideoModal('terminal_bar.mp4', '5.5 Terminal Bar Tightening')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked / Tight" selected>Checked / Tight</option><option value="Terminal tightened">Terminal tightened</option></select></td>
+          </tr>
+          <tr>
+            <td>6</td>
+            <td><div class="param-flex"><span class="param-text">Check proper operation of lights. Replace if defective.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('lights_functional.mp4', '5.6 Complete Lighting Functional Test')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked / All Working" selected>Checked / All Working</option><option value="Defective light replaced">Defective light replaced</option></select></td>
+          </tr>
+          <tr>
+            <td>7</td>
+            <td><div class="param-flex"><span class="param-text">Check the condition of XK32R & K62R coupler</span><button type="button" class="btn-help-vid" onclick="openVideoModal('xk32r_coupler.mp4', '5.7 XK32R & K62R Couplers')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked / Intact" selected>Checked / Intact</option><option value="Coupler tightened">Coupler tightened</option></select></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- 6. Marker Light -->
+      <div class="section-header">
+        <div class="section-title">6. Marker Light</div>
+        <button class="quick-fill-btn" onclick="resetSection('sec-6')">Set All to Standard</button>
+      </div>
+      <table class="check-table" id="sec-6">
+        <thead><tr><th style="width: 45px;">Sl</th><th>Parameter to be verified</th><th style="width: 250px;">Action Taken / Actual Value</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td><div class="param-flex"><span class="param-text">Clean the glasses of the marker and ensure no crack.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('marker_clean.mp4', '6.1 Marker Glass Cleaning')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked / Cleaned & No crack" selected>Checked / Cleaned & No crack</option><option value="Glass replaced" class="defect">Glass replaced</option></select></td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td><div class="param-flex"><span class="param-text">Ensure no entry of water through marker light and apply sealant.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('marker_sealant.mp4', '6.2 Marker Sealing Procedure')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked / Sealant Applied" selected>Checked / Sealant Applied</option><option value="Ensured / No entry">Ensured / No entry</option></select></td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td><div class="param-flex"><span class="param-text">Check proper operation of marker lights (red & white).</span><button type="button" class="btn-help-vid" onclick="openVideoModal('marker_red_white.mp4', '6.3 Red & White Marker Glowing Check')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked / Both Glowing" selected>Checked / Both Glowing</option><option value="LED module replaced">LED module replaced</option></select></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- 7. Signal Exchange Lamps -->
+      <div class="section-header">
+        <div class="section-title green-text">7. Signal Exchange Lamps</div>
+        <button class="quick-fill-btn" onclick="resetSection('sec-7')">Set All to Standard</button>
+      </div>
+      <table class="check-table" id="sec-7">
+        <thead><tr><th style="width: 45px;">Sl</th><th>Parameter to be verified</th><th style="width: 250px;">Action Taken / Actual Value</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>1.</td>
+            <td><div class="param-flex"><span class="param-text green-text">Check terminal connections and water sealing of signal exchange lamps.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('signal_exchange_seal.mp4', '7.1 Signal Exchange Water Seal Check')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Intact / Sealed" selected>Intact / Sealed</option><option value="Tightened & resealed">Tightened & resealed</option></select></td>
+          </tr>
+          <tr>
+            <td>2.</td>
+            <td><div class="param-flex"><span class="param-text green-text">Check condition of signal exchange lamp control units and push-buttons.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('signal_pushbuttons.mp4', '7.2 Cab Push Button Checks')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Intact & Working" selected>Intact & Working</option><option value="Push-button replaced">Push-button replaced</option></select></td>
+          </tr>
+          <tr>
+            <td>3.</td>
+            <td><div class="param-flex"><span class="param-text green-text">Check Red & Green Lamps glowing in both cab LP and ALP sides.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('signal_glow_test.mp4', '7.3 LP / ALP Glowing Verification')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Working / Both Glowing" selected>Working / Both Glowing</option><option value="Lamp replaced">Lamp replaced</option></select></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- TAB 3: CABLES, FOOT PLATES, LTBA (8, 11, 12) -->
+    <div class="tab-content" id="tab-3">
+      <div class="section-header">
+        <div class="section-title">8. Cables</div>
+        <button class="quick-fill-btn" onclick="resetSection('sec-8')">Set All to Standard</button>
+      </div>
+      <table class="check-table" id="sec-8">
+        <thead><tr><th style="width: 45px;">Sl</th><th>Parameter to be verified</th><th style="width: 250px;">Action Taken / Actual Value</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td><div class="param-flex"><span class="param-text">Visually check for rubbing mark or damage of cables and attend.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('cable_rubbing.mp4', '8.1 Cable Rubbing Marks Inspection')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked / No damage" selected>Checked / No damage</option><option value="Rubbing attended & taped">Rubbing attended & taped</option></select></td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td><div class="param-flex"><span class="param-text">Check for overheating/damage of cables. Attend if noted.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('cable_overheat.mp4', '8.2 Cable Thermal Discoloration Check')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked / No overheating" selected>Checked / No overheating</option><option value="Overheating noticed & attended" class="defect">Overheating noticed & attended</option></select></td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td><div class="param-flex"><span class="param-text">Check condition of TMDDS cables and its stiffeners.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('tmdds_cables.mp4', '8.3 TMDDS Cables & Stiffeners')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked / Intact" selected>Checked / Intact</option><option value="Stiffener tightened">Stiffener tightened</option></select></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- 11. Machine Room Foot Plates -->
+      <div class="section-header">
+        <div class="section-title">11. Machine Room Foot Plates Over Cable Trenches</div>
+        <button class="quick-fill-btn" onclick="resetSection('sec-11')">Set All to Standard</button>
+      </div>
+      <table class="check-table" id="sec-11">
+        <thead><tr><th style="width: 45px;">Sl</th><th>Parameter to be verified</th><th style="width: 250px;">Action Taken / Actual Value</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td><div class="param-flex"><span class="param-text">Check intactness of all fasteners fixing foot plates in machine room.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('mr_foot_plates.mp4', '11.1 Trench Foot Plates Fastener Check')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked / All Intact" selected>Checked / All Intact</option><option value="Fasteners tightened">Fasteners tightened</option></select></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- 12. LTBA -->
+      <div class="section-header">
+        <div class="section-title green-text">12. LTBA</div>
+        <button class="quick-fill-btn" onclick="resetSection('sec-12')">Set All to Standard</button>
+      </div>
+      <table class="check-table" id="sec-12">
+        <thead><tr><th style="width: 45px;">Sl</th><th>Parameter to be verified</th><th style="width: 250px;">Action Taken / Actual Value</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>1.</td>
+            <td><div class="param-flex"><span class="param-text green-text">Check LTBA for overheating marks. Clean LTBA top glass.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('ltba_glass.mp4', '12.1 LTBA Top Glass Cleaning')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Cleaned / No overheating" selected>Cleaned / No overheating</option><option value="Top glass cleaned">Top glass cleaned</option></select></td>
+          </tr>
+          <tr>
+            <td>2.</td>
+            <td><div class="param-flex"><span class="param-text green-text">Check LTBA connections for proper tightness.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('ltba_tightness.mp4', '12.2 LTBA Terminal Tightness')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked / Tight" selected>Checked / Tight</option><option value="Connections tightened">Connections tightened</option></select></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- TAB 4: COUPLERS (9 & 10) -->
+    <div class="tab-content" id="tab-4">
+      <div class="section-header">
+        <div class="section-title">9. Inter Vehicle Couplers (IV Couplers)</div>
+        <button class="quick-fill-btn" onclick="resetSection('sec-9')">Set All to Standard</button>
+      </div>
+      <table class="check-table" id="sec-9">
+        <thead><tr><th style="width: 45px;">Sl</th><th>Parameter to be verified</th><th style="width: 250px;">Action Taken / Actual Value</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td><div class="param-flex"><span class="param-text">Check IV coupler cover/body for damage and replace if required.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('iv_cover_body.mp4', '9.1 IV Coupler Cover Condition')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked / Sound" selected>Checked / Sound</option><option value="Cover replaced">Cover replaced</option></select></td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td><div class="param-flex"><span class="param-text">Check visually for damage, flash mark and overheating.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('iv_flash_marks.mp4', '9.2 Flash Marks & Overheating Check')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Ensured / No flash mark" selected>Ensured / No flash mark</option><option value="Repaired & Cleaned">Repaired & Cleaned</option></select></td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td><div class="param-flex"><span class="param-text">Check intactness of sealing ring gasket on socket of locomotive.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('iv_socket_gasket.mp4', '9.3 Socket Sealing Gasket Check')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked / Intact" selected>Checked / Intact</option><option value="Gasket replaced">Gasket replaced</option></select></td>
+          </tr>
+          <tr>
+            <td>4</td>
+            <td><div class="param-flex"><span class="param-text">Clean IV coupler and lubricate moving parts if found sluggish.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('iv_cleaning_lube.mp4', '9.4 Coupler Cleaning & Lubrication')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked & Lubricated" selected>Checked & Lubricated</option><option value="Cleaned & Free">Cleaned & Free</option></select></td>
+          </tr>
+          <tr>
+            <td>5</td>
+            <td><div class="param-flex"><span class="param-text">Check Ratchet assembly locking/unlocking & intactness of all hardware.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('iv_ratchet.mp4', '9.5 Ratchet Mechanism Verification')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked / Locking Normal" selected>Checked / Locking Normal</option><option value="Hardware tightened">Hardware tightened</option></select></td>
+          </tr>
+          <tr>
+            <td>6</td>
+            <td><div class="param-flex"><span class="param-text">Ensure intactness of both HEX small bolt and HEX big bolt.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('iv_hex_bolts.mp4', '9.6 Bearing Pivot Bolt Inspection')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Ensured / Intact & Tight" selected>Ensured / Intact & Tight</option><option value="Bolts tightened">Bolts tightened</option></select></td>
+          </tr>
+          <tr>
+            <td>7</td>
+            <td><div class="param-flex"><span class="param-text">Ensure proper working of locking bolt.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('iv_locking_bolt.mp4', '9.7 Locking Bolt Functionality')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Ensured / Working Free" selected>Ensured / Working Free</option><option value="Attended / Lubricated">Attended / Lubricated</option></select></td>
+          </tr>
+          <tr>
+            <td>8</td>
+            <td><div class="param-flex"><span class="param-text">Ensure intactness of both Allen screw.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('iv_allen_screws.mp4', '9.8 Allen Screws Check')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Ensured / Intact" selected>Ensured / Intact</option><option value="Allen screw tightened">Allen screw tightened</option></select></td>
+          </tr>
+          <tr>
+            <td>9</td>
+            <td><div class="param-flex"><span class="param-text">Ensure intactness of insulated base foundation bolt.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('iv_foundation_bolt.mp4', '9.9 Base Foundation Bolt Inspection')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Ensured / Straight & Intact" selected>Ensured / Straight & Intact</option><option value="Bolt tightened">Bolt tightened</option></select></td>
+          </tr>
+          <tr>
+            <td>10</td>
+            <td><div class="param-flex"><span class="param-text">Ensure Lever tie bow assembly gap with “NO GO Gauge”.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('iv_nogo_gauge.mp4', '9.10 NO GO Gauge Measurement')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Ensured with NO GO Gauge (Passed)" selected>Ensured with NO GO Gauge (Passed)</option><option value="Failed gauge / Replaced" class="defect">Failed gauge / Replaced</option></select></td>
+          </tr>
+          <tr>
+            <td>11</td>
+            <td><div class="param-flex"><span class="param-text">Check IV coupler mobile contact pin (Phase & control) for freeness.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('iv_contact_pins.mp4', '9.11 Mobile Contact Pin Freeness')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked / Free movement" selected>Checked / Free movement</option><option value="Defective pin replaced" class="defect">Defective pin replaced</option></select></td>
+          </tr>
+          <tr>
+            <td>12</td>
+            <td><div class="param-flex"><span class="param-text">Clean coupler pins with suitable cleaners.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('iv_pin_clean.mp4', '9.12 Coupler Pin Cleaning Spray')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Cleaned" selected>Cleaned</option><option value="Done with contact cleaner">Done with contact cleaner</option></select></td>
+          </tr>
+          <tr>
+            <td>13</td>
+            <td><div class="param-flex"><span class="param-text">Ensure couplers are in closed conditions to prevent dust/water.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('iv_closed_cond.mp4', '9.13 Dust & Water Enclosure Check')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Ensured / Closed properly" selected>Ensured / Closed properly</option><option value="Cover closed & locked">Cover closed & locked</option></select></td>
+          </tr>
+          <tr>
+            <td>14</td>
+            <td><div class="param-flex"><span class="param-text">Check phase sequence at all 4 couplers.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('iv_phase_sequence.mp4', '9.14 4-Coupler Phase Sequence')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked / Correct Sequence" selected>Checked / Correct Sequence</option><option value="Re-checked & confirmed">Re-checked & confirmed</option></select></td>
+          </tr>
+          <tr>
+            <td>15</td>
+            <td><div class="param-flex"><span class="param-text">Replace O ring (sealing gasket) of IV coupler. <strong>(IC only)</strong></span><button type="button" class="btn-help-vid" onclick="openVideoModal('iv_oring_replace.mp4', '9.15 O-Ring Replacement Protocol')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Replaced (IC Schedule)" selected>Replaced (IC Schedule)</option><option value="Not Applicable (IA / IB)">Not Applicable (IA / IB)</option></select></td>
+          </tr>
+          <tr>
+            <td>16</td>
+            <td><div class="param-flex"><span class="param-text">Check Insulation between Control Pins (C1 & C2) w.r.t body (>10 M ohm).</span><button type="button" class="btn-help-vid" onclick="openVideoModal('iv_megger_test.mp4', '9.16 500VDC Megger Insulation Test')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked (>10 MΩ / OK)" selected>Checked (&gt;10 MΩ / OK)</option><option value="Measured > 20 MΩ">Measured &gt; 20 MΩ</option></select></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- 10. UIC Couplers -->
+      <div class="section-header">
+        <div class="section-title">10. UIC Couplers</div>
+        <button class="quick-fill-btn" onclick="resetSection('sec-10')">Set All to Standard</button>
+      </div>
+      <table class="check-table" id="sec-10">
+        <thead><tr><th style="width: 45px;">Sl</th><th>Parameter to be verified</th><th style="width: 250px;">Action Taken / Actual Value</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td><div class="param-flex"><span class="param-text">Check water leakage through joints, gasket condition & apply sealant.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('uic_leakage.mp4', '10.1 UIC Joint Sealant Inspection')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked / Sealant Applied" selected>Checked / Sealant Applied</option><option value="Gasket replaced">Gasket replaced</option></select></td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td><div class="param-flex"><span class="param-text">Ensure proper locking of couplers.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('uic_locking.mp4', '10.2 UIC Coupler Locking Test')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Ensured / Locked properly" selected>Ensured / Locked properly</option></select></td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td><div class="param-flex"><span class="param-text">Ensure UIC couplers are painted green on both sides.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('uic_green_paint.mp4', '10.3 Green Identification Paint')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Ensured / Painted Green" selected>Ensured / Painted Green</option><option value="Touched up / Repainted">Touched up / Repainted</option></select></td>
+          </tr>
+          <tr>
+            <td>4</td>
+            <td><div class="param-flex"><span class="param-text">Check both sides UIC coupler cover tension. Replace if improper.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('uic_cover_tension.mp4', '10.4 Cover Spring Tension')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked / Tension Good" selected>Checked / Tension Good</option><option value="Cover replaced">Cover replaced</option></select></td>
+          </tr>
+          <tr>
+            <td>5</td>
+            <td><div class="param-flex"><span class="param-text">Check female contact pin for oxidation/flashing, diameter and locking.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('uic_female_pin.mp4', '10.5 Female Contact Pin Check')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked / Clean & Normal" selected>Checked / Clean & Normal</option><option value="Cleaned with spray">Cleaned with spray</option></select></td>
+          </tr>
+          <tr>
+            <td>6</td>
+            <td><div class="param-flex"><span class="param-text">UIC coupler must be in closed condition preventing dust and water.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('uic_closed_ingress.mp4', '10.6 Dust/Water Sealing Check')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Ensured / Closed condition" selected>Ensured / Closed condition</option></select></td>
+          </tr>
+          <tr>
+            <td>7</td>
+            <td><div class="param-flex"><span class="param-text">In UIC coupler, condition of all red color gaskets needs to be checked.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('uic_red_gaskets.mp4', '10.7 Red Color Gaskets Check')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Checked / Good condition" selected>Checked / Good condition</option><option value="Gasket replaced">Gasket replaced</option></select></td>
+          </tr>
+          <tr>
+            <td>8</td>
+            <td><div class="param-flex"><span class="param-text green-text">LP and ALP UIC couplers all pins continuity checked with tester.</span><button type="button" class="btn-help-vid" onclick="openVideoModal('uic_continuity.mp4', '10.8 UIC Pin Continuity Tester')"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Help</button></div></td>
+            <td><select class="action-select" onchange="checkStatus(this)"><option value="Ensured / All Pins Normal" selected>Ensured / All Pins Normal</option><option value="Open circuit attended" class="defect">Open circuit attended</option></select></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- TAB 5: SIGN-OFF & APPROVALS -->
+    <div class="tab-content" id="tab-5">
+      <div class="section-header">
+        <div class="section-title">Deviations & Remarks</div>
+      </div>
+      <div style="margin-bottom: 16px;">
+        <label style="font-weight: 600; font-size: 13px; display: block; margin-bottom: 6px;">NOTE: If any deviation is found the same to be brought to the knowledge of section in charge before permitting.</label>
+        <textarea id="deviationsNotes" rows="3" style="width: 100%; border: 1px solid var(--border); border-radius: 6px; padding: 10px; font-size: 14px;" placeholder="Record any deviations, defects noted or parts replaced..."></textarea>
+      </div>
+
+      <div class="section-header">
+        <div class="section-title">Shed Personnel Signatures</div>
+      </div>
+      <div class="sign-grid" style="margin-bottom: 16px;">
+        <div class="sign-box">
+          <label>TECHNICIAN (NAME & EMP NO.)</label>
+          <input type="text" id="techName" placeholder="Name & Emp ID" />
+          <label style="margin-top: 8px;">TECHNICIAN SIGNATURE</label>
+          <input type="text" id="techSign" placeholder="Signature" />
+        </div>
+        <div class="sign-box">
+          <label>SECTION IN-CHARGE (PREPARED BY)</label>
+          <input type="text" id="preparedBy" placeholder="Sr.Tech / JE / SSE / E5B2" />
+          <label style="margin-top: 8px;">SSE / E5B2 SIGNATURE</label>
+          <input type="text" id="sseSign" placeholder="Signature" />
+        </div>
+      </div>
+
+      <div class="section-header">
+        <div class="section-title" style="color: #2b6cb0;">Officer Approvals (Rendered on Final Report)</div>
+      </div>
+      <div class="sign-grid">
+        <div class="sign-box highlight">
+          <label>REVIEWED BY (ADEE / DEE)</label>
+          <input type="text" id="reviewedBy" placeholder="Name / Designation" />
+        </div>
+        <div class="sign-box highlight">
+          <label>APPROVED BY (SR. DEE)</label>
+          <input type="text" id="approvedBy" placeholder="Name / Designation" />
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Sticky Bottom Navigation Bar -->
+  <footer class="bottom-bar">
+    <div class="bottom-left-group">
+      <button id="btnFullscreen" class="btn btn-fs" onclick="toggleFullScreen()" title="Force Fullscreen on Tablet PC">
+        <svg id="fsIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+        </svg>
+        <span id="fsText">Full Screen</span>
+      </button>
+      <div class="status-badge" id="saveIndicator">✓ Auto-saved Locally</div>
+    </div>
+
+    <div class="bar-btns">
+      <button class="btn btn-upload" onclick="syncToServer()" title="Upload to Shed Server">☁ Sync to Server</button>
+      <button class="btn btn-secondary" onclick="exportDataJSON()">JSON</button>
+      <button class="btn btn-primary" onclick="window.print()">Print</button>
+      <button class="btn btn-pdf" onclick="generatePDFReport()">📄 PDF</button>
+    </div>
+  </footer>
+
+  <!-- Mini Video Player Overlay Modal -->
+  <div id="videoModal" class="video-modal-backdrop" onclick="closeVideoModal(event)">
+    <div class="video-card" onclick="event.stopPropagation()">
+      <div class="video-card-header">
+        <div class="video-card-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#fc8181"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+          <span id="modalVideoTitle">Instructional Video</span>
+        </div>
+        <button class="video-close-btn" onclick="closeVideoModal()" title="Close Player">✕</button>
+      </div>
+      <div class="video-body">
+        <video id="helpVideoPlayer" controls playsinline preload="auto">
+          <source id="videoSource" src="" type="video/mp4" />
+          Your tablet browser does not support HTML5 video playback.
+        </video>
+      </div>
+      <div class="video-footer-info">
+        <span id="videoPathLabel">Path: videos/...</span>
+        <span>Host Server Stream</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const VIDEO_BASE_URL = "videos/";
+
+    function openVideoModal(videoFilename, title) {
+      const modal = document.getElementById('videoModal');
+      const player = document.getElementById('helpVideoPlayer');
+      const source = document.getElementById('videoSource');
+      const titleSpan = document.getElementById('modalVideoTitle');
+      const pathLabel = document.getElementById('videoPathLabel');
+
+      const fullVideoPath = VIDEO_BASE_URL + videoFilename;
+
+      titleSpan.innerText = title;
+      pathLabel.innerText = "Stream File: " + fullVideoPath;
+
+      source.src = fullVideoPath;
+      player.load();
+      modal.classList.add('show');
+
+      player.play().catch(e => console.log("Awaiting touch interaction:", e));
+    }
+
+    function closeVideoModal(e) {
+      if (e && e.target !== document.getElementById('videoModal')) return;
+      const modal = document.getElementById('videoModal');
+      const player = document.getElementById('helpVideoPlayer');
+      const source = document.getElementById('videoSource');
+
+      player.pause();
+      player.currentTime = 0;
+      source.src = "";
+      modal.classList.remove('show');
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeVideoModal();
+    });
+
+    // Fullscreen Toggle for Tablets
+    function toggleFullScreen() {
+      const docEl = document.documentElement;
+      const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+
+      try {
+        if (!isFullscreen) {
+          if (docEl.requestFullscreen) docEl.requestFullscreen();
+          else if (docEl.webkitRequestFullscreen) docEl.webkitRequestFullscreen();
+          else if (docEl.msRequestFullscreen) docEl.msRequestFullscreen();
+        } else {
+          if (document.exitFullscreen) document.exitFullscreen();
+          else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+          else if (document.msExitFullscreen) document.msExitFullscreen();
+        }
+      } catch (err) {
+        console.warn("Fullscreen toggle warning:", err);
+      }
+    }
+
+    function updateFullscreenUI() {
+      const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+      const fsBtn = document.getElementById('btnFullscreen');
+      const fsText = document.getElementById('fsText');
+      const fsIcon = document.getElementById('fsIcon');
+
+      if (!fsBtn) return;
+
+      if (isFullscreen) {
+        fsBtn.classList.add('active');
+        fsText.innerText = "Exit Full";
+        fsIcon.innerHTML = '<path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path>';
+      } else {
+        fsBtn.classList.remove('active');
+        fsText.innerText = "Full Screen";
+        fsIcon.innerHTML = '<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>';
+      }
+    }
+
+    ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'].forEach(evt => {
+      document.addEventListener(evt, updateFullscreenUI);
+    });
+
+    function switchTab(index) {
+      document.querySelectorAll('.tab-btn').forEach((btn, idx) => {
+        btn.classList.toggle('active', idx === index);
+      });
+      document.querySelectorAll('.tab-content').forEach((page, idx) => {
+        page.classList.toggle('active', idx === index);
+      });
+      hideDragHandle();
+      window.scrollTo(0, 0);
+    }
+
+    // Generate 26 Battery Rows
+    const tbody = document.getElementById('batteryRows');
+    for (let i = 1; i <= 26; i++) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong>${i}</strong></td>
+        <td><input type="number" step="0.01" class="v-nl" data-row="${i}" data-col="1" oninput="calcTotals()" /></td>
+        <td><input type="number" step="0.01" class="v-nl" data-row="${i}" data-col="2" oninput="calcTotals()" /></td>
+        <td><input type="number" step="0.01" class="v-nl" data-row="${i}" data-col="3" oninput="calcTotals()" /></td>
+        <td class="auto-total" id="nl-tot-${i}">0.00</td>
+
+        <td><input type="number" step="0.01" class="v-wl" data-row="${i}" data-col="4" oninput="calcTotals()" /></td>
+        <td><input type="number" step="0.01" class="v-wl" data-row="${i}" data-col="5" oninput="calcTotals()" /></td>
+        <td><input type="number" step="0.01" class="v-wl" data-row="${i}" data-col="6" oninput="calcTotals()" /></td>
+        <td class="auto-total" id="wl-tot-${i}">0.00</td>
+
+        <td><input type="number" step="0.001" placeholder="1.200" class="sp-g" data-row="${i}" data-col="7" oninput="triggerAutoSave()" /></td>
+        <td><input type="number" step="0.001" placeholder="1.200" class="sp-g" data-row="${i}" data-col="8" oninput="triggerAutoSave()" /></td>
+        <td><input type="number" step="0.001" placeholder="1.200" class="sp-g" data-row="${i}" data-col="9" oninput="triggerAutoSave()" /></td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+    function calcTotals() {
+      let overallNL = 0;
+      let overallWL = 0;
+
+      for (let i = 1; i <= 26; i++) {
+        const nls = document.querySelectorAll(`input.v-nl[data-row="${i}"]`);
+        let rowSumNL = 0;
+        nls.forEach(input => rowSumNL += parseFloat(input.value) || 0);
+        document.getElementById(`nl-tot-${i}`).innerText = rowSumNL.toFixed(2);
+        overallNL += rowSumNL;
+
+        const wls = document.querySelectorAll(`input.v-wl[data-row="${i}"]`);
+        let rowSumWL = 0;
+        wls.forEach(input => rowSumWL += parseFloat(input.value) || 0);
+        document.getElementById(`wl-tot-${i}`).innerText = rowSumWL.toFixed(2);
+        overallWL += rowSumWL;
+      }
+
+      document.getElementById('lblTotalNL').innerText = overallNL.toFixed(2);
+      document.getElementById('lblTotalWL').innerText = overallWL.toFixed(2);
+      triggerAutoSave();
+    }
+
+    function checkStatus(selectElem) {
+      const selectedOption = selectElem.options[selectElem.selectedIndex];
+      if (selectedOption.classList.contains('defect')) {
+        selectElem.classList.add('defect');
+      } else {
+        selectElem.classList.remove('defect');
+      }
+      triggerAutoSave();
+    }
+
+    function resetSection(tableId) {
+      const table = document.getElementById(tableId);
+      const selects = table.querySelectorAll('select.action-select');
+      selects.forEach(sel => {
+        sel.selectedIndex = 0;
+        sel.classList.remove('defect');
+      });
+      triggerAutoSave();
+    }
+
+    // Touch & Drag to auto-fill
+    const dragHandle = document.getElementById('dragHandle');
+    const dragTooltip = document.getElementById('dragTooltip');
+    const matrixContainer = document.getElementById('matrixContainer');
+
+    let activeInput = null;
+    let isDragging = false;
+    let highlightedInputs = [];
+
+    function positionDragHandle(input) {
+      if (!input || !input.parentElement) return;
+      activeInput = input;
+      const td = input.parentElement;
+      const containerRect = matrixContainer.getBoundingClientRect();
+      const tdRect = td.getBoundingClientRect();
+
+      const top = tdRect.bottom - containerRect.top + matrixContainer.scrollTop - 14;
+      const left = tdRect.right - containerRect.left + matrixContainer.scrollLeft - 14;
+
+      dragHandle.style.top = `${top}px`;
+      dragHandle.style.left = `${left}px`;
+      dragHandle.style.display = 'flex';
+    }
+
+    function hideDragHandle() {
+      if (!isDragging) {
+        dragHandle.style.display = 'none';
+      }
+    }
+
+    tbody.querySelectorAll('input').forEach(input => {
+      input.addEventListener('focus', () => positionDragHandle(input));
+      input.addEventListener('click', () => positionDragHandle(input));
+    });
+
+    matrixContainer.addEventListener('scroll', () => {
+      if (activeInput && !isDragging) {
+        positionDragHandle(activeInput);
+      }
+    });
+
+    dragHandle.addEventListener('pointerdown', startDrag);
+
+    function startDrag(e) {
+      if (!activeInput) return;
+      isDragging = true;
+      dragHandle.setPointerCapture(e.pointerId);
+      highlightedInputs = [activeInput];
+      activeInput.classList.add('drag-target');
+
+      dragTooltip.style.display = 'block';
+      updateTooltip(e.clientX, e.clientY, activeInput.value, 1);
+
+      window.addEventListener('pointermove', onDragMove);
+      window.addEventListener('pointerup', endDrag);
+      e.preventDefault();
+    }
+
+    function onDragMove(e) {
+      if (!isDragging || !activeInput) return;
+
+      const targetElem = document.elementFromPoint(e.clientX, e.clientY);
+      const targetInput = targetElem ? targetElem.closest('input[data-row]') : null;
+
+      updateTooltip(e.clientX, e.clientY, activeInput.value, highlightedInputs.length);
+
+      if (targetInput) {
+        const startRow = parseInt(activeInput.getAttribute('data-row'), 10);
+        const startCol = parseInt(activeInput.getAttribute('data-col'), 10);
+        const curRow = parseInt(targetInput.getAttribute('data-row'), 10);
+        const curCol = parseInt(targetInput.getAttribute('data-col'), 10);
+
+        const minRow = Math.min(startRow, curRow);
+        const maxRow = Math.max(startRow, curRow);
+        const minCol = Math.min(startCol, curCol);
+        const maxCol = Math.max(startCol, curCol);
+
+        highlightedInputs.forEach(inp => inp.classList.remove('drag-target'));
+        highlightedInputs = [];
+
+        for (let r = minRow; r <= maxRow; r++) {
+          for (let c = minCol; c <= maxCol; c++) {
+            const inp = tbody.querySelector(`input[data-row="${r}"][data-col="${c}"]`);
+            if (inp) {
+              inp.classList.add('drag-target');
+              highlightedInputs.push(inp);
+            }
+          }
+        }
+
+        updateTooltip(e.clientX, e.clientY, activeInput.value, highlightedInputs.length);
+      }
+    }
+
+    function endDrag(e) {
+      if (!isDragging) return;
+      isDragging = false;
+
+      window.removeEventListener('pointermove', onDragMove);
+      window.removeEventListener('pointerup', endDrag);
+      dragTooltip.style.display = 'none';
+
+      const sourceVal = activeInput.value;
+      if (sourceVal !== '' && highlightedInputs.length > 0) {
+        highlightedInputs.forEach(input => {
+          input.value = sourceVal;
+          input.classList.remove('drag-target');
+        });
+        calcTotals();
+      } else {
+        highlightedInputs.forEach(input => input.classList.remove('drag-target'));
+      }
+
+      const last = highlightedInputs[highlightedInputs.length - 1] || activeInput;
+      positionDragHandle(last);
+    }
+
+    function updateTooltip(x, y, val, count) {
+      dragTooltip.style.top = `${y - 38}px`;
+      dragTooltip.style.left = `${x + 10}px`;
+      dragTooltip.innerText = val !== ''
+        ? `Fill "${val}" into ${count} cell${count > 1 ? 's' : ''}`
+        : `Drag to select (${count} cells)`;
+    }
+
+    function quickFillColumn() {
+      if (!activeInput || activeInput.value === '') {
+        alert('Please enter a value in any battery cell first!');
+        return;
+      }
+      const col = activeInput.getAttribute('data-col');
+      const val = activeInput.value;
+      tbody.querySelectorAll(`input[data-col="${col}"]`).forEach(inp => {
+        inp.value = val;
+      });
+      calcTotals();
+    }
+
+    function quickFillRow() {
+      if (!activeInput || activeInput.value === '') {
+        alert('Please enter a value first!');
+        return;
+      }
+      const row = activeInput.getAttribute('data-row');
+      const col = parseInt(activeInput.getAttribute('data-col'), 10);
+      const val = activeInput.value;
+
+      let startCol = 1;
+      if (col >= 4 && col <= 6) startCol = 4;
+      if (col >= 7 && col <= 9) startCol = 7;
+
+      for (let c = startCol; c < startCol + 3; c++) {
+        const inp = tbody.querySelector(`input[data-row="${row}"][data-col="${c}"]`);
+        if (inp) inp.value = val;
+      }
+      calcTotals();
+    }
+
+    function getFormState() {
+      const selectsData = {};
+      document.querySelectorAll('select.action-select').forEach((sel, idx) => {
+        selectsData[idx] = sel.selectedIndex;
+      });
+
+      const matrixData = {};
+      tbody.querySelectorAll('input').forEach(inp => {
+        const key = `r${inp.dataset.row}_c${inp.dataset.col}`;
+        matrixData[key] = inp.value;
+      });
+
+      return {
+        locoNo: document.getElementById('locoNo').value,
+        inspDate: document.getElementById('inspDate').value,
+        schType: document.querySelector('input[name="schType"]:checked')?.value || 'IA',
+        make: document.getElementById('batMake').value,
+        lugDate: document.getElementById('lugDate').value,
+        deviations: document.getElementById('deviationsNotes').value,
+        techName: document.getElementById('techName').value,
+        techSign: document.getElementById('techSign').value,
+        preparedBy: document.getElementById('preparedBy').value,
+        sseSign: document.getElementById('sseSign').value,
+        reviewedBy: document.getElementById('reviewedBy').value,
+        approvedBy: document.getElementById('approvedBy').value,
+        selects: selectsData,
+        matrix: matrixData
+      };
+    }
+
+    function triggerAutoSave() {
+      const state = getFormState();
+      localStorage.setItem('loco_inspection_report_db', JSON.stringify(state));
+      const ind = document.getElementById('saveIndicator');
+      ind.innerText = '✓ Auto-saved Locally';
+    }
+
+    // Build the Official Vector jsPDF Document
+    function buildInspectionPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF('p', 'mm', 'a4');
+      const totalPagesExp = '{total_pages_count_string}';
+
+      const locoNo = document.getElementById('locoNo').value.trim() || '---';
+      const inspDate = document.getElementById('inspDate').value || new Date().toISOString().slice(0, 10);
+      const schType = document.querySelector('input[name="schType"]:checked')?.value || 'IA';
+      const make = document.getElementById('batMake').value.trim() || '---';
+      const lugDate = document.getElementById('lugDate').value.trim() || '---';
+      const totNL = document.getElementById('lblTotalNL').innerText || '0.00';
+      const totWL = document.getElementById('lblTotalWL').innerText || '0.00';
+      const reviewedByVal = document.getElementById('reviewedBy').value.trim();
+      const approvedByVal = document.getElementById('approvedBy').value.trim();
+
+      const drawReportHeader = (pageNumber) => {
+        doc.setDrawColor(30, 41, 59);
+        doc.setLineWidth(0.3);
+        doc.rect(10, 8, 190, 24);
+        doc.line(75, 8, 75, 32);
+        doc.line(10, 24, 75, 24);
+        doc.line(75, 16, 200, 16);
+        doc.line(75, 24, 200, 24);
+        doc.line(125, 16, 125, 24);
+        doc.line(170, 16, 170, 24);
+        doc.line(40, 24, 40, 32);
+        doc.line(105, 24, 105, 32);
+        doc.line(155, 24, 155, 32);
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9.5);
+        doc.setTextColor(26, 54, 93);
+        doc.text("Southern Railway", 42, 13, { align: 'center' });
+        doc.setFontSize(8);
+        doc.setTextColor(50, 50, 50);
+        doc.text("Salem Division\nElectric Loco Shed, Erode", 42, 17.5, { align: 'center' });
+        doc.text("Version No. 1.0", 25, 29, { align: 'center' });
+
+        doc.setFontSize(10.5);
+        doc.text("Section-E5B2", 137, 12, { align: 'center' });
+        doc.setFontSize(8.5);
+        doc.setTextColor(0, 0, 0);
+        doc.text("Schedule Inspection Chart for 3-Phase Locos", 137, 15, { align: 'center' });
+
+        doc.setFontSize(7.5);
+        doc.text("Document No: F/ E5B2 3Phase/01", 77, 20);
+        doc.text(`Page: ${pageNumber} of ${totalPagesExp}`, 172, 20);
+        doc.text("Page Revision No. 0", 77, 23.5);
+        doc.text("Effective Date: 28.04.2026", 127, 23.5);
+
+        doc.setFontSize(8.5);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(26, 54, 93);
+        doc.text(`Loco No: ${locoNo}`, 45, 29);
+        doc.text(`Date: ${inspDate}`, 110, 29);
+        doc.text(`Type of Schedule: [ ${schType} ]`, 160, 29);
+      };
+
+      // ONLY REVIEWED BY & APPROVED BY in footer
+      const drawOfficerApprovalFooter = () => {
+        const y = 277;
+        doc.setDrawColor(30, 41, 59);
+        doc.setLineWidth(0.35);
+        doc.rect(10, y, 190, 13);
+        doc.line(105, y, 105, y + 13);
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8.5);
+        doc.setTextColor(26, 54, 93);
+        doc.text("Reviewed by", 57.5, y + 4.5, { align: 'center' });
+        doc.text("Approved by", 152.5, y + 4.5, { align: 'center' });
+
+        doc.setFontSize(7.5);
+        doc.setTextColor(70, 70, 70);
+        doc.text("ADEE / DEE", 57.5, y + 8, { align: 'center' });
+        doc.text("Sr. DEE", 152.5, y + 8, { align: 'center' });
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8);
+        doc.setTextColor(0, 0, 0);
+        if (reviewedByVal) doc.text(reviewedByVal, 57.5, y + 11.8, { align: 'center' });
+        if (approvedByVal) doc.text(approvedByVal, 152.5, y + 11.8, { align: 'center' });
+      };
+
+      // Page 1: Battery Matrix
+      drawReportHeader(1);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.setTextColor(60, 60, 60);
+      doc.text("General inspection, cleaning and ensuring of connections are regular works and hence not mentioned specifically.", 10, 36);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.5);
+      doc.setTextColor(26, 54, 93);
+      doc.text("1. BATTERIES | a). Check and record each cell voltage and specific gravity.", 10, 40.5);
+      doc.setFontSize(8);
+      doc.setTextColor(0, 0, 0);
+      doc.text(`MAKE: ${make}     |     LUG DATE: ${lugDate}`, 130, 40.5);
+
+      const matrixBody = [];
+      for (let i = 1; i <= 26; i++) {
+        const rowInputs = tbody.children[i-1].querySelectorAll('input');
+        matrixBody.push([
+          i,
+          rowInputs[0].value || '-', rowInputs[1].value || '-', rowInputs[2].value || '-',
+          document.getElementById(`nl-tot-${i}`)?.innerText || '0.00',
+          rowInputs[3].value || '-', rowInputs[4].value || '-', rowInputs[5].value || '-',
+          document.getElementById(`wl-tot-${i}`)?.innerText || '0.00',
+          rowInputs[6].value || '-', rowInputs[7].value || '-', rowInputs[8].value || '-'
+        ]);
+      }
+
+      doc.autoTable({
+        startY: 42.5,
+        margin: { left: 10, right: 10 },
+        theme: 'grid',
+        styles: { fontSize: 6.5, cellPadding: 1, halign: 'center', textColor: [20, 20, 20], lineColor: [160, 174, 192], lineWidth: 0.2 },
+        headStyles: { fillColor: [237, 242, 247], textColor: [26, 54, 93], fontStyle: 'bold', lineWidth: 0.2, lineColor: [160, 174, 192] },
+        columnStyles: {
+          0: { cellWidth: 16, fontStyle: 'bold' },
+          4: { cellWidth: 16, fontStyle: 'bold', fillColor: [247, 250, 252] },
+          8: { cellWidth: 16, fontStyle: 'bold', fillColor: [247, 250, 252] }
+        },
+        head: [
+          [{ content: 'BA NO.', rowSpan: 2 }, { content: 'WITHOUT LOAD (V)', colSpan: 3 }, { content: 'TOTAL', rowSpan: 2 }, { content: 'WITH LOAD (V)', colSpan: 3 }, { content: 'TOTAL', rowSpan: 2 }, { content: 'SP. GRAVITY (1.190 - 1.210)', colSpan: 3 }],
+          ['CELL 1', 'CELL 2', 'CELL 3', 'CELL 1', 'CELL 2', 'CELL 3', 'CELL 1', 'CELL 2', 'CELL 3']
+        ],
+        body: matrixBody,
+        foot: [[
+          { content: `Total Voltage No Load: ${totNL} V`, colSpan: 5, styles: { halign: 'left', fontStyle: 'bold', fontSize: 7.5, textColor: [26, 54, 93] } },
+          { content: `Total Voltage On Load: ${totWL} V`, colSpan: 7, styles: { halign: 'left', fontStyle: 'bold', fontSize: 7.5, textColor: [26, 54, 93] } }
+        ]],
+        footStyles: { fillColor: [235, 244, 255], lineColor: [160, 174, 192] }
+      });
+      drawOfficerApprovalFooter();
+
+      // Pages 2+: Checklists
+      doc.addPage();
+
+      const extractChecklistRows = (tableId, sectionHeader) => {
+        const table = document.getElementById(tableId);
+        if (!table) return [];
+        const rows = [[{ content: sectionHeader, colSpan: 3, styles: { fillColor: [26, 54, 93], fontStyle: 'bold', textColor: [255, 255, 255], halign: 'left', fontSize: 7.5 } }]];
+        table.querySelectorAll('tbody tr').forEach(tr => {
+          const sl = tr.cells[0]?.innerText.trim();
+          const paramElem = tr.cells[1]?.querySelector('.param-text');
+          const param = (paramElem ? paramElem.innerText : tr.cells[1]?.innerText).trim();
+          const select = tr.cells[2]?.querySelector('select');
+          const action = select?.value || 'Checked';
+          const isDefect = select?.selectedOptions[0]?.classList.contains('defect') || action.toLowerCase().includes('defect') || action.toLowerCase().includes('leakage') || action.toLowerCase().includes('replaced');
+          rows.push([sl, param, { content: action, styles: isDefect ? { textColor: [197, 48, 48], fontStyle: 'bold' } : { textColor: [20, 20, 20], fontStyle: 'bold' } }]);
+        });
+        return rows;
+      };
+
+      const allChecklistData = [
+        ...extractChecklistRows('sec-1b', '1.b BATTERIES (Maintenance Checks)'),
+        ...extractChecklistRows('sec-2', '2. BATTERY BOX'),
+        ...extractChecklistRows('sec-3', '3. BATTERY BOX MCB (112)'),
+        ...extractChecklistRows('sec-4', '4. HEAD LIGHT'),
+        ...extractChecklistRows('sec-5', '5. CAB, MACHINE ROOM AND SPOTLIGHT'),
+        ...extractChecklistRows('sec-6', '6. MARKER LIGHT'),
+        ...extractChecklistRows('sec-7', '7. SIGNAL EXCHANGE LAMPS'),
+        ...extractChecklistRows('sec-8', '8. CABLES'),
+        ...extractChecklistRows('sec-11', '11. MACHINE ROOM FOOT PLATES OVER CABLE TRENCHES'),
+        ...extractChecklistRows('sec-12', '12. LTBA'),
+        ...extractChecklistRows('sec-9', '9. INTER VEHICLE COUPLERS (IV COUPLERS)'),
+        ...extractChecklistRows('sec-10', '10. UIC COUPLERS')
+      ];
+
+      doc.autoTable({
+        startY: 35,
+        margin: { top: 35, bottom: 22, left: 10, right: 10 },
+        theme: 'grid',
+        styles: { fontSize: 7, cellPadding: 1.4, textColor: [20, 20, 20], lineColor: [160, 174, 192], lineWidth: 0.2 },
+        headStyles: { fillColor: [237, 242, 247], textColor: [26, 54, 93], fontStyle: 'bold' },
+        columnStyles: { 0: { cellWidth: 12, halign: 'center' }, 1: { cellWidth: 128 }, 2: { cellWidth: 50 } },
+        head: [['Sl', 'Parameter to be verified', 'Action Taken / Actual Value']],
+        body: allChecklistData,
+        didDrawPage: (data) => { drawReportHeader(data.pageNumber); drawOfficerApprovalFooter(); }
+      });
+
+      let finalY = doc.lastAutoTable.finalY + 4;
+      if (finalY > 225) {
+        doc.addPage();
+        drawReportHeader(doc.internal.getNumberOfPages());
+        drawOfficerApprovalFooter();
+        finalY = 36;
+      }
+
+      doc.setDrawColor(30, 41, 59);
+      doc.setLineWidth(0.3);
+      doc.setFillColor(247, 250, 252);
+      doc.rect(10, finalY, 190, 18, 'FD');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.setTextColor(26, 54, 93);
+      doc.text("DEVIATIONS & REMARKS / DEFECTS ATTENDED:", 13, finalY + 4.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.setTextColor(30, 30, 30);
+      const devNotes = document.getElementById('deviationsNotes').value.trim() || 'No deviations noted. All parameters inspected and found complying with standard schedule requirements.';
+      doc.text(doc.splitTextToSize(devNotes, 184), 13, finalY + 9);
+
+      const signY = finalY + 20;
+      doc.rect(10, signY, 190, 16);
+      doc.line(105, signY, 105, signY + 16);
+
+      const techName = document.getElementById('techName').value.trim() || '---';
+      const techSign = document.getElementById('techSign').value.trim() || '---';
+      const sseSign = document.getElementById('sseSign').value.trim() || '---';
+      const prepBy = document.getElementById('preparedBy').value.trim() || '---';
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.setTextColor(0, 0, 0);
+      doc.text(`Signature of Technician: ${techSign}`, 13, signY + 5.5);
+      doc.text(`Name of Technician: ${techName}`, 13, signY + 11.5);
+      doc.text(`Signature of Sr.Tech / JE / SSE / E5B2: ${sseSign}`, 108, signY + 5.5);
+      doc.text(`Section-in-Charge: ${prepBy}`, 108, signY + 11.5);
+
+      if (typeof doc.putTotalPages === 'function') {
+        doc.putTotalPages(totalPagesExp);
+      }
+
+      return { doc, locoNo, inspDate, schType };
+    }
+
+    // Generate PDF, download to tablet, and upload a copy to the host computer
+    async function generatePDFReport() {
+      if (!window.jspdf || !window.jspdf.jsPDF) {
+        alert("Client PDF library is offline. Opening system Print view instead.");
+        window.print();
+        return;
+      }
+
+      const ind = document.getElementById('saveIndicator');
+      ind.innerText = '⏳ Generating & Uploading PDF...';
+
+      const { doc, locoNo, inspDate, schType } = buildInspectionPDF();
+      const fileName = `Schedule_${schType}_Loco_${locoNo}_${inspDate}.pdf`;
+
+      // 1. Download on tablet
+      doc.save(fileName);
+
+      // 2. Extract Base64 and send a copy to the Shed Host Server
+      try {
+        const pdfBase64 = doc.output('datauristring').split(',')[1];
+        const state = getFormState();
+        state.pdfBase64 = pdfBase64;
+
+        const res = await fetch('/api/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(state)
+        });
+        const result = await res.json();
+        if (result.status === "success") {
+          ind.innerText = '✓ PDF Saved on Host & Tablet';
+        }
+      } catch (err) {
+        ind.innerText = '✓ PDF Saved on Tablet (Host Offline)';
+        console.warn("Could not save PDF copy to host server:", err);
+      }
+    }
+
+    // Sync button: Sends JSON and silently generates & sends PDF to the host
+    async function syncToServer() {
+      const ind = document.getElementById('saveIndicator');
+      ind.innerText = '⏳ Syncing Data & PDF to Host...';
+
+      try {
+        const state = getFormState();
+        if (window.jspdf && window.jspdf.jsPDF) {
+          const { doc } = buildInspectionPDF();
+          state.pdfBase64 = doc.output('datauristring').split(',')[1];
+        }
+
+        const res = await fetch('/api/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(state)
+        });
+        const result = await res.json();
+        if (result.status === "success") {
+          ind.innerText = '✓ Archived on Host';
+          alert(`Success! Saved on Shed Host Computer:\n📄 PDF: ${result.pdf_file || 'Saved'}\n📊 JSON: ${result.json_file}`);
+        } else {
+          throw new Error(result.message);
+        }
+      } catch (err) {
+        ind.innerText = '⚠️ Host Offline';
+        alert('Could not sync to host server. Ensure tablet is connected to the shed Wi-Fi network.');
+      }
+    }
+
+    function exportDataJSON() {
+      const loco = document.getElementById('locoNo').value || 'UnknownLoco';
+      const date = document.getElementById('inspDate').value || 'UnknownDate';
+      const blob = new Blob([localStorage.getItem('loco_inspection_report_db') || '{}'], {type: 'application/json'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `Inspection_${loco}_${date}.json`;
+      a.click();
+    }
+
+    // Restore saved state
+    window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('inspDate').valueAsDate = new Date();
+
+      const saved = localStorage.getItem('loco_inspection_report_db');
+      if (saved) {
+        try {
+          const data = JSON.parse(saved);
+          if (data.locoNo) document.getElementById('locoNo').value = data.locoNo;
+          if (data.make) document.getElementById('batMake').value = data.make;
+          if (data.lugDate) document.getElementById('lugDate').value = data.lugDate;
+          if (data.deviations) document.getElementById('deviationsNotes').value = data.deviations;
+          if (data.techName) document.getElementById('techName').value = data.techName;
+          if (data.techSign) document.getElementById('techSign').value = data.techSign;
+          if (data.preparedBy) document.getElementById('preparedBy').value = data.preparedBy;
+          if (data.sseSign) document.getElementById('sseSign').value = data.sseSign;
+          if (data.reviewedBy) document.getElementById('reviewedBy').value = data.reviewedBy;
+          if (data.approvedBy) document.getElementById('approvedBy').value = data.approvedBy;
+
+          if (data.selects) {
+            const allSelects = document.querySelectorAll('select.action-select');
+            Object.keys(data.selects).forEach(idx => {
+              if (allSelects[idx]) {
+                allSelects[idx].selectedIndex = data.selects[idx];
+                checkStatus(allSelects[idx]);
+              }
+            });
+          }
+
+          if (data.matrix) {
+            Object.keys(data.matrix).forEach(key => {
+              const [rPart, cPart] = key.split('_');
+              const r = rPart.replace('r', '');
+              const c = cPart.replace('c', '');
+              const inp = tbody.querySelector(`input[data-row="${r}"][data-col="${c}"]`);
+              if (inp) inp.value = data.matrix[key];
+            });
+            calcTotals();
+          }
+        } catch(e) {}
+      }
+
+      document.body.addEventListener('input', triggerAutoSave);
+      document.body.addEventListener('change', triggerAutoSave);
+    });
+  </script>
+</body>
+</html>
